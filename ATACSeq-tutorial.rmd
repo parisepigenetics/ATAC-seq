@@ -1,0 +1,50 @@
+---
+title : "ATAC Sec tutorial"
+author : "Délara Sabéran-Djoneidi, Anne-Laure Schang, Kate Wooley-Allen, Sascha Ott"
+output : html_document
+---
+
+# ATAC Seq tutorial and detailled pipeline
+
+#TODO : add authors
+#TODO : add coders
+
+Please use the fournished Conda environments
+
+## Intro and general description
+
+- Trimming
+- Alignement
+- Quality Control
+
+
+## Load Conda environment
+TODO
+
+## Trimming
+
+The fastq files are trimmed using Trimmomatic v0.39 to remove any adapter sequences in the reads caused by read through associated with DNA fragments shorter in size than the read length being sequenced.
+
+This particular step need to be adapted depending on your exact data and need. We encourage you to read the [documentation](http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf) of the Trimmomatic tool in order to find the best possible use for your case.
+
+Let's breakdown the particular actions asked here:
+
+
+* `ILLUMINACLIP:NexteraPE-PE.fa:2:30:10:1:true` corresponds more generally to `ILLUMINACLIP:<fastaWithAdaptersEtc>:<seed mismatches>:<palindrome clip threshold>:<simple clip threshold>`
+  - `ILLUMINACLIP` we ask to cut adapters and other illumina sequence from the reads
+  - `NexteraPE-PE.fa` We give infomations on the type of adaptors that have been used in the librairy preparation (here, Nextera Pair ended), the correspondant .fasta must be included
+  - `2:30:10:1:true`
+* `TRAILING:3`
+* `SLIDINGWINDOW:4:15`
+
+```{bash}
+trimmomatic PE -threads 2 data/raw_reads/2_S2_R1_001.fastq.gz data/raw_reads/2_S2_R2_001.fastq.gz output/trimmed_files2_S2_R1_trimmed.fastq output/trimmed_files2_S2_R1_trimmed_unpaired.fastq output/trimmed_files2_S2_R2_trimmed.fastq output/trimmed_files2_S2_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
+```
+
+## Alignement
+
+This step must also be adapted to your particular experiment, namely the genomes used may vary.
+
+Alignment is performed by bowtie2.4.4
+
+In order to align reads to genomes and particular cellular compartments (i.e. mithochodria), it is necessary to build a bowtie index for each of them and potential cofounders. In the end, only the reads mapping solely to the target of interests will be saved, which in our case means that the mithochondrial hits will be removed.

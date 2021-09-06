@@ -1,0 +1,1 @@
+trimmomatic PE -threads 2 data/raw_reads/2_S2_R1_001.fastq.gz data/raw_reads/2_S2_R2_001.fastq.gz output/trimmed_files2_S2_R1_trimmed.fastq output/trimmed_files2_S2_R1_trimmed_unpaired.fastq output/trimmed_files2_S2_R2_trimmed.fastq output/trimmed_files2_S2_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
