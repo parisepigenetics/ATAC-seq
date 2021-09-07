@@ -3,3 +3,4 @@ data/genomes/GRCm39/
 *DS_Store
 .ipynb_checkpoints/
 output/*
+temp_files/*

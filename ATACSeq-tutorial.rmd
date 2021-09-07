@@ -37,8 +37,8 @@ Let's breakdown the particular actions asked here:
 * `TRAILING:3`
 * `SLIDINGWINDOW:4:15`
 
-```{bash}
-trimmomatic PE -threads 2 data/raw_reads/2_S2_R1_001.fastq.gz data/raw_reads/2_S2_R2_001.fastq.gz output/trimmed_files2_S2_R1_trimmed.fastq output/trimmed_files2_S2_R1_trimmed_unpaired.fastq output/trimmed_files2_S2_R2_trimmed.fastq output/trimmed_files2_S2_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
+```{bash trimmomatic, eval = FALSE}
+trimmomatic PE -threads 2 data/raw_reads/2_S2_R1_001.fastq.gz data/raw_reads/2_S2_R2_001.fastq.gz output/trimmed_files/2_S2_R1_trimmed.fastq output/trimmed_files/2_S2_R1_trimmed_unpaired.fastq output/trimmed_files/2_S2_R2_trimmed.fastq output/trimmed_files/2_S2_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
 ```
 
 ## Alignement
@@ -47,4 +47,52 @@ This step must also be adapted to your particular experiment, namely the genomes
 
 Alignment is performed by bowtie2.4.4
 
+### Bowtie2 Index
+
 In order to align reads to genomes and particular cellular compartments (i.e. mithochodria), it is necessary to build a bowtie index for each of them and potential cofounders. In the end, only the reads mapping solely to the target of interests will be saved, which in our case means that the mithochondrial hits will be removed.
+
+Bowtie2 necessitate and index to be build before alignment can be done. By default, the exact method used is choosen depending on the specificities of the machine doing the computation, please read the [documentation of bowtie2-build](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#the-bowtie2-build-indexer) for further informations, and be carefull when repeating a study on different machines.
+
+If you already have a bowtie index built for this type of alignment, this step can be skipped.
+
+```{bash bowtie2-index,  eval=FALSE}
+bowtie2-build chr1.fa,chr2.fa,chr3.fa,chr4.fa,chr5.fa,chr6.fa,chr7.fa,chr8.fa,chr9.fa,chr10.fa,chr11.fa,chr12.fa,chr13.fa,chr14.fa,chr15.fa,chr16.fa,chr17.fa,chr18.fa,chr19.fa mouse_vn_chrN
+
+bowtie2-build chrM.fa mouse_vn_chrM.fa
+
+```
+
+### Alignement
+
+#### Removal of Mitochondrial DNA
+
+Let's breakdown the various options used
+
+* `-p 4` We are using 4 threads for alignement. This option can also be accessed via `--threads`
+* `-X 2000` The maximum fragment length accepted between paired end. This number should be adapted depending on your sequencing protocol.
+* `--very-sensitive` preset option corresponding to `-D 20 -R 3 -N 0 -L 20 -i S,1,0.50`
+* `-x` shows bowtie index
+*  `-1 and -2` The input fastq files in the case of paired end alignment
+*  `-S` File in which to write the output SAM file of the aligned reads. This file will not be usefull to us later, but printing it allows us to use less memory
+*  `--un-conc` We only keep pairs that DIDn't aligned on mitochondrial genome
+
+for more informations and option, you can run `bowtie2 --help`
+
+```{bash mitochondria-removind, eval = FALSE}
+bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/GRCm39/mouse_vn_chrM.fa -1 output/trimmed_files/2_S2_R1_trimmed.fastq -2 output/trimmed_files/2_S2_R2_trimmed.fastq -S temp_files/A_tempM.sam --un-conc temp_files/2_S2_fastq
+```
+
+This command also generate the files that must be deleted (??? TODO check that)
+
+#### Alignment on chromosomal genome
+
+```{bash zipping-files, eval = FALSE}
+gzip -9 temp_files/2_S2_fastq.1 temp_files/2_S2_fastq.2
+rm temp_files/A_tempM.sam
+```
+
+
+
+```{bash aligning-non-mitochodrial eval=FALSE }
+bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/GRCm39/mouse_vn_chrN -1 temp_files/2_S2_fastq.1.gz -2 temp_files/2_S2_fastq.2.gz -S output/aligned_files/2_S2_aligned_nuclear
+```
