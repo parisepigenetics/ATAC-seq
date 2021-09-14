@@ -1,5 +1,6 @@
 data/raw_reads/
-data/genomes/GRCm39/
+data/genomes/*
+data/blacklist/
 *DS_Store
 .ipynb_checkpoints/
 output/*

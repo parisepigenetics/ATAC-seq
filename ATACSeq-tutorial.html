@@ -172,20 +172,31 @@ pre code {
 
 <p>#TODO : add authors #TODO : add coders</p>
 <p>Please use the fournished Conda environments</p>
+<div id="personnal-todo" class="section level2">
+<h2>Personnal TODO</h2>
+<ul>
+<li>Maje sure to use the grcm38 mouse genome (mm10)</li>
+</ul>
+</div>
 <div id="questions-and-tools-to-ask-to-delara" class="section level2">
 <h2>Questions and tools to ask to Delara</h2>
 <ul>
-<li>Data example we can use (2 conditions, limited number of reads and chromosomes)</li>
-<li>Organism used</li>
-<li>Genomes version used</li>
-<li>Why do you want it ? (To help or to complement the paper)</li>
+<li>Data example we can use (2 conditions, limited number of reads and chromosomes, several files so we can combine the reads)</li>
+<li>Organism used (Mouse I’m guessing)</li>
+<li>Genomes version used (mm10 ?)</li>
 <li>Versions of each tools used (If just to help we can change them)</li>
 <li>Why samtools 1.2 ?</li>
 <li>What type of machine did you run it on ?</li>
 <li>Why bowtie2 and not another aligner ?</li>
-<li>What is the analysis you use EdgeR on ? (i’m guessing differential)</li>
+<li>What is the analysis you use EdgeR on ? (i’m guessing differential), Which version of R and EdgeR ?</li>
 <li>How did you choose the trimmomatic options ?</li>
+<li>How did you write the original jupyter notebook ?</li>
+<li>How do you use the stats outputs (Sam FLAGS and MAPQ) (Table 2 from paper ?)</li>
+<li>How did you choose the Flags and MAPQ ?</li>
+<li>Peaks calling, what two files are merged and how (I’m guessing the two previous, and I’m guessing cat)</li>
+<li>Why the blacklist ? is it just for masked regions ?</li>
 </ul>
+<p><em>échantillons 1-6 microgli p90 trauma 7-12 control </em>13-16 OliNeu prolifération 17-20 différentiation 21-24 différentatiation+TNF <em>Analyses faites sur machine locale </em>Trimmomatic options decided by discussion via Warwick collegues. Adapted to ATAC Seq and not RNA Seq</p>
 </div>
 <div id="intro-and-general-description" class="section level2">
 <h2>Intro and general description</h2>
@@ -215,7 +226,7 @@ pre code {
 <li><code>TRAILING:3</code></li>
 <li><code>SLIDINGWINDOW:4:15</code></li>
 </ul>
-<pre class="bash"><code>trimmomatic PE -threads 2 data/raw_reads/2_S2_R1_001.fastq.gz data/raw_reads/2_S2_R2_001.fastq.gz output/trimmed_files/2_S2_R1_trimmed.fastq output/trimmed_files/2_S2_R1_trimmed_unpaired.fastq output/trimmed_files/2_S2_R2_trimmed.fastq output/trimmed_files/2_S2_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15</code></pre>
+<pre class="bash"><code>trimmomatic PE -threads 2 data/raw_reads/3_S3_R1_001.fastq.gz data/raw_reads/3_S3_R2_001.fastq.gz output/trimmed_files/3_S3_R1_trimmed.fastq output/trimmed_files/3_S3_R1_trimmed_unpaired.fastq output/trimmed_files/3_S3_R2_trimmed.fastq output/trimmed_files/3_S3_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15</code></pre>
 </div>
 <div id="alignement" class="section level2">
 <h2>Alignement</h2>
@@ -228,7 +239,7 @@ pre code {
 <p>If you already have a bowtie index built for this type of alignment, this step can be skipped.</p>
 <pre class="bash"><code>bowtie2-build chr1.fa,chr2.fa,chr3.fa,chr4.fa,chr5.fa,chr6.fa,chr7.fa,chr8.fa,chr9.fa,chr10.fa,chr11.fa,chr12.fa,chr13.fa,chr14.fa,chr15.fa,chr16.fa,chr17.fa,chr18.fa,chr19.fa mouse_vn_chrN
 
-bowtie2-build chrM.fa mouse_vn_chrM.fa
+bowtie2-build chrM.fa mouse_vn_chrM
 </code></pre>
 </div>
 <div id="alignement-1" class="section level3">
@@ -246,53 +257,60 @@ bowtie2-build chrM.fa mouse_vn_chrM.fa
 <li><code>--un-conc</code> We only keep pairs that DIDn’t aligned on mitochondrial genome</li>
 </ul>
 <p>for more informations and option, you can run <code>bowtie2 --help</code></p>
-<pre class="bash"><code>bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/GRCm39/mouse_vn_chrM.fa -1 output/trimmed_files/2_S2_R1_trimmed.fastq -2 output/trimmed_files/2_S2_R2_trimmed.fastq -S temp_files/A_tempM.sam --un-conc temp_files/2_S2_fastq</code></pre>
-<p>This command also generate some files that must be deleted, namely <code>temp_files/A_tempM.sam</code>, we still keep it as an output because removing it make the alignment much more memory heavy.</p>
+<pre class="bash"><code>bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/mm10/mouse_vn_chrM -1 output/trimmed_files/3_S3_R1_trimmed.fastq -2 output/trimmed_files/3_S3_R2_trimmed.fastq -S temp_files/3_S3_tempM.sam --un-conc temp_files/3_S3_fastq</code></pre>
+<p>This command also generate some files that must be deleted, namely <code>temp_files/3_S3_tempM.sam</code>, we still keep it as an output because removing it make the alignment much more memory heavy.</p>
 </div>
 <div id="alignment-on-chromosomal-genome" class="section level4">
 <h4>Alignment on chromosomal genome</h4>
 <p>Bowtie2 ask files to be compressed before alignment, so we have to zip the files. We also remove the sam files that</p>
-<pre class="bash"><code>gzip temp_files/2_S2_fastq.1 temp_files/2_S2_fastq.2
-rm temp_files/A_tempM.sam</code></pre>
+<pre class="bash"><code>gzip temp_files/3_S3_fastq.1 temp_files/3_S3_fastq.2
+rm temp_files/3_S3_tempM.sam</code></pre>
 <p>We align on the chromosomal genome, in a very similar maner as the previous alignment</p>
-<pre class="bash"><code>bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/GRCm39/mouse_vn_chrN -1 temp_files/2_S2_fastq.1.gz -2 temp_files/2_S2_fastq.2.gz -S output/aligned_files/2_S2_aligned_nuclear.sam</code></pre>
-<pre class="bash"><code>rm temp_files/2_S2_fastq.*</code></pre>
+<pre class="bash"><code>bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/mm10/mouse_vn_chrN -1 temp_files/3_S3_fastq.1.gz -2 temp_files/3_S3_fastq.2.gz -S output/aligned_files/3_S3_aligned.sam</code></pre>
+<pre class="bash"><code>rm temp_files/3_S3_fastq.*</code></pre>
 <p>Change of type of file, we want the sam output to be made as a sorted and indexed bam files.</p>
-<pre class="bash"><code>samtools view -b --threads 3 output/aligned_files/2_S2_aligned_nuclear.sam -b -o output/aligned_files/2_S2_aligned_nuclear_unsorted.bam</code></pre>
+<pre class="bash"><code>samtools view -b --threads 3 output/aligned_files/3_S3_aligned.sam -b -o output/aligned_files/3_S3_aligned_unsorted.bam</code></pre>
 <p>Sorting the bam file</p>
-<pre class="bash"><code>samtools sort output/aligned_files/2_S2_aligned_nuclear_unsorted.bam output/aligned_files/2_S2_aligned_nuclear_sorted.bam
-samtools index output/aligned_files/2_S2_aligned_nuclear_sorted.bam</code></pre>
-<pre><code>## [bam_sort] Use -T PREFIX / -o FILE to specify temporary and final output files
-## Usage: samtools sort [options...] [in.bam]
-## Options:
-##   -l INT     Set compression level, from 0 (uncompressed) to 9 (best)
-##   -u         Output uncompressed data (equivalent to -l 0)
-##   -m INT     Set maximum memory per thread; suffix K/M/G recognized [768M]
-##   -M         Use minimiser for clustering unaligned/unplaced reads
-##   -K INT     Kmer size to use for minimiser [20]
-##   -n         Sort by read name (not compatible with samtools index command)
-##   -t TAG     Sort by value of TAG. Uses position as secondary index (or read name if -n is set)
-##   -o FILE    Write final output to FILE rather than standard output
-##   -T PREFIX  Write temporary files to PREFIX.nnnn.bam
-##   --no-PG    do not add a PG line
-##       --input-fmt-option OPT[=VAL]
-##                Specify a single input file format option in the form
-##                of OPTION or OPTION=VALUE
-##   -O, --output-fmt FORMAT[,OPT[=VAL]]...
-##                Specify output format (SAM, BAM, CRAM)
-##       --output-fmt-option OPT[=VAL]
-##                Specify a single output file format option in the form
-##                of OPTION or OPTION=VALUE
-##       --reference FILE
-##                Reference sequence FASTA FILE [null]
-##   -@, --threads INT
-##                Number of additional threads to use [0]
-##       --write-index
-##                Automatically index the output files [off]
-##       --verbosity INT
-##                Set level of verbosity</code></pre>
+<pre class="bash"><code>samtools sort output/aligned_files/3_S3_aligned_unsorted.bam -o output/aligned_files/3_S3_aligned_sorted.bam
+samtools index output/aligned_files/3_S3_aligned_sorted.bam</code></pre>
 </div>
 </div>
+</div>
+<div id="quality-controls-and-filters" class="section level2">
+<h2>Quality Controls and Filters</h2>
+<p>The various outputs of this part, located in <code>output/stats/</code> must be studied to see wether something has gone wrong up with the alignment, even though trouble at the alignment step can be caused by an uncatched problem in the earlier steps. What to do when you have an unexpected behaviour will very much depend on your experiment.</p>
+<div id="samtools-flags" class="section level3">
+<h3>SAMtools flags</h3>
+<p>SAMtools flag are a way SAMtools trackes several information about a read, such as wether it is paired. Here we check the repartition of those flags within our sample.</p>
+<pre class="bash"><code>samtools view output/aligned_files/3_S3_aligned_sorted.bam |  awk &#39;{print $2}&#39; | sort -n | uniq -c | sed &#39;s/^ *//g&#39; &gt; output/stats/3_S3_aligned_samflags.txt</code></pre>
+</div>
+<div id="samtools-mapq-score" class="section level3">
+<h3>Samtools MAPQ score</h3>
+<p>Let’s create the MAPQ score distribution by using Samtools for reads that have the flags that correponds to 2 (TODO check which flags those are)</p>
+<pre class="bash"><code>samtools view output/aligned_files/3_S3_aligned_nuclear_sorted.bam | awk &#39;{print $5}&#39; | sort -n | uniq -c | sed &#39;s/^ *//g&#39;  &gt; output/stats/3_S3_aligned_mapq.txt</code></pre>
+</div>
+<div id="template-length" class="section level3">
+<h3>Template length</h3>
+<p>Let’s execute a filter on FLAGs and MAPQ quality with the used of -f and -q (TODO check what MAPQ 22 means) and observe the Template Length (space between pair of reads)</p>
+<pre class="bash"><code>samtools view -f2 -q22 output/aligned_files/3_S3_aligned_sorted.bam | cut -f 9| sed &#39;s/^-//&#39; | sort -n | uniq -c |sed  &#39;s/^ *//g&#39; &gt; output/stats/3_S3_aligned_is_summary.txt</code></pre>
+<p>TODO ask why there is no filter on this</p>
+</div>
+<div id="filter-on-the-previous-things" class="section level3">
+<h3>Filter on the previous things</h3>
+<pre class="bash"><code>samtools view -f2 -q22 -b output/aligned_files/3_S3_aligned_sorted.bam &gt; output/aligned_filtered/3_S3_aligned_filtered.bam</code></pre>
+</div>
+<div id="fastqc---general-quality-check" class="section level3">
+<h3>fastQC - general quality check</h3>
+<pre class="bash"><code>fastqc -o output/stats/fastQC/ output/aligned_filtered/3_S3_aligned_filtered.bam</code></pre>
+<p>If you are treating several files at once, multiQC can be a good way to check wether the quality vary depending on each sample/condition, which might affect results down the line</p>
+</div>
+</div>
+<div id="peaks-calling" class="section level2">
+<h2>Peaks calling</h2>
+<p>Before calling the peaks of the ATAC-Seq, pooling the reads of similar samples together can make peak calling more efficient. If you have several different conditions that you want to compare, keep them seperated and create one file per condition.</p>
+<pre class="bash"><code>samtools merge -o output/aligned_filtered/merged_ctrl.bam output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam</code></pre>
+<p>We use macs2 for the calling of the ATAC-Seq peaks.</p>
+<pre class="bash"><code>macs2 callpeak -t output/aligned_filtered/merged_ctrl.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl.bed</code></pre>
 </div>
 
 
