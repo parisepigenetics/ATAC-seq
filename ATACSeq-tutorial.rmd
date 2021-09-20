@@ -52,6 +52,14 @@ R ??
 bowtie2.4.4
 samtools 1.13
 
+## First Quality control
+In order to see how much the pre-processing improves the data, it is good practice to look at various statistics on the raw dataset. FastQC provides a good summary of those.
+
+```{bash fastQC-raw, eval=TRUE, results="hide"}
+fastqc -o output/stats/raw_fastQC/ data/raw_reads/2_S2_R1_001.fastq.gz
+fastqc -o output/stats/raw_fastQC/ data/raw_reads/2_S2_R2_001.fastq.gz
+```
+
 ## Trimming
 
 The fastq files are trimmed using Trimmomatic v0.39 to remove any adapter sequences in the reads caused by read through associated with DNA fragments shorter in size than the read length being sequenced.
@@ -198,5 +206,5 @@ samtools merge -o output/aligned_filtered/merged_ctrl.bam output/aligned_filtere
 We use macs2 for the calling of the ATAC-Seq peaks.
 
 ```{bash peak-calling, eval=TRUE, results="hide"}
-macs2 callpeak -t output/aligned_filtered/merged_ctrl.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl.bed
+macs2 callpeak -t output/aligned_filtered/merged_ctrl.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl
 ```
