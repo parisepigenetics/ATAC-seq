@@ -1,47 +1,17 @@
 ---
-title : "ATAC Sec tutorial"
+title : "ATAC-Seq Example"
 author : "Délara Sabéran-Djoneidi, Anne-Laure Schang, Kate Wooley-Allen, Sascha Ott"
 output : html_document
 ---
 
-
-## Personnal TODO
-
-- Make sure to use the grcm38 mouse genome (mm10)
-
-## Questions and tools to ask to Delara
-
-- Data example we can use (2 conditions, limited number of reads and chromosomes, several files so we can combine the reads)
-- Organism used (Mouse I'm guessing)
-- Genomes version used (mm10 ?)
-- Versions of each tools used (If just to help we can change them)
-- Why samtools 1.2 ?
-- What type of machine did you run it on ?
-- Why bowtie2 and not another aligner ?
-- What is the analysis you use EdgeR on ? (i'm guessing differential), Which version of R and EdgeR ?
-- How did you choose the trimmomatic options ?
-- How did you write the original jupyter notebook ?
-- How do you use the stats outputs (Sam FLAGS and MAPQ) (Table 2 from paper ?)
-- How did you choose the Flags and MAPQ ?
-- Peaks calling, what two files are merged and how (I'm guessing the two previous, and I'm guessing cat)
-- Why the blacklist ? is it just for masked regions ?
-
-*échantillons 1-6 microgli p90 trauma 7-12 control
-*13-16 OliNeu prolifération 17-20 différentiation 21-24 différentatiation+TNF
-*Analyses faites sur machine locale
-*Trimmomatic options decided by discussion via Warwick collegues. Adapted to ATAC Seq and not RNA Seq
-
-
 ## Intro and general description
 
-- Trimming
-- Alignement
-- Quality Control
+This document aims to be a detailled example of an ATAC-Seq analysis used in a reasearch context. The goal here is to help you draft your own experiments from this perticular base, by walking you through the steps we took and by pointing out the parts were the specificity of your experimental set will ask for some tinkering.
 
 
 ## Load Conda environment
 
-In order to be sure to have the appropriate tools to run this analysis, we provide a conda environment summarising them. to use it, please download conda (TODO add link) and run the following line.
+In order to be sure to have the appropriate tools to run this analysis, we provide a conda environment summarising them. to use it, please download [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/download.html) and run the following line.
 ```{bash startup-conda-environment, eval=FALSE, results="hide"}
 conda env create -f conda_environment.yml
 ```
@@ -49,14 +19,14 @@ conda env create -f conda_environment.yml
 ## First Quality control
 In order to see how much the pre-processing improves the data, it is good practice to look at various statistics on the raw dataset. FastQC provides a good summary of those.
 
-```{bash fastQC-raw, eval=TRUE, results="hide"}
+```{bash fastQC-raw, eval=FALSE, results="hide"}
 fastqc -o output/stats/raw_fastQC/ data/raw_reads/3_S3_R1_001.fastq.gz
 fastqc -o output/stats/raw_fastQC/ data/raw_reads/3_S3_R2_001.fastq.gz
 ```
 
 If you have multiple samples, multiQC is a good way to look at the global quality over your samples.
 
-```{bash multiQC-raw, eval=TRUE, results="hide"}
+```{bash multiQC-raw, eval=FALSE, results="hide"}
 multiqc output/stats/raw_fastQC
 mv multiqc_data/ output/stats/raw_fastQC
 mv multiqc_report.html output/stats/raw_fastQC
@@ -65,20 +35,17 @@ mv multiqc_report.html output/stats/raw_fastQC
 
 The fastq files are trimmed using Trimmomatic v0.39 to remove any adapter sequences in the reads caused by read through associated with DNA fragments shorter in size than the read length being sequenced.
 
-This particular step need to be adapted depending on your exact data and need. We found these options to be the most efficient in the case of ATAC-Seq.If you want to know more we encourage you to read the [documentation](http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf) of the Trimmomatic tool in order to find the best possible use for your case.
+This particular step need to be adapted depending on your exact data and need. We found these options to be the most efficient in the case of ATAC-Seq. If you want to know more we encourage you to read the [documentation](http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf) of the Trimmomatic tool in order to find the best possible use for your case.
 
-Let's breakdown the particular actions asked here:
-
-
-```{bash trimmomatic, eval=TRUE, results="hide"}
+```{bash trimmomatic, eval=FALSE, results="hide"}
 trimmomatic PE -threads 2 data/raw_reads/3_S3_R1_001.fastq.gz data/raw_reads/3_S3_R2_001.fastq.gz output/trimmed_files/3_S3_R1_trimmed.fastq output/trimmed_files/3_S3_R1_trimmed_unpaired.fastq output/trimmed_files/3_S3_R2_trimmed.fastq output/trimmed_files/3_S3_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
 ```
 
 ## Alignement
 
-This step must also be adapted to your particular experiment, namely the genomes used may vary.
+This step must also be adapted to your particular experiment, namely the genomes used may vary and the aligner used as well as the alignment options can be otpimised.
 
-Alignment is performed by bowtie2.4.4
+In our case, alignment is performed by bowtie2.4.4
 
 ### Bowtie2 Index
 
@@ -113,7 +80,7 @@ Let's breakdown the various options used
 
 for more informations and option, you can run `bowtie2 --help`
 
-```{bash mitochondria-removind, eval=TRUE, results="hide"}
+```{bash mitochondria-removind, eval=FALSE, results="hide"}
 bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/mm10/mouse_vn_chrM -1 output/trimmed_files/3_S3_R1_trimmed.fastq -2 output/trimmed_files/3_S3_R2_trimmed.fastq -S temp_files/3_S3_tempM.sam --un-conc temp_files/3_S3_fastq
 ```
 
@@ -123,30 +90,30 @@ This command also generate some files that must be deleted, namely `temp_files/3
 
 Bowtie2 ask files to be compressed before alignment, so we have to zip the files. We also remove the sam files that
 
-```{bash zipping-files, eval=TRUE, results="hide"}
+```{bash zipping-files, eval=FALSE, results="hide"}
 gzip temp_files/3_S3_fastq.1 temp_files/3_S3_fastq.2
 rm temp_files/3_S3_tempM.sam
 ```
 
 We align on the chromosomal genome, in a very similar maner as the previous alignment
 
-```{bash aligning-non-mitochodrial, eval=TRUE, results="hide" }
+```{bash aligning-non-mitochodrial, eval=FALSE, results="hide" }
 bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/mm10/mouse_vn_chrN -1 temp_files/3_S3_fastq.1.gz -2 temp_files/3_S3_fastq.2.gz -S output/aligned_files/3_S3_aligned.sam
 ```
 
-```{bash removing-temp-files, eval=TRUE, results="hide"}
+```{bash removing-temp-files, eval=FALSE, results="hide"}
 rm temp_files/3_S3_fastq.*
 ```
 
 Change of type of file, we want the sam output to be made as a sorted and indexed bam files.
 
-```{bash sam-to-bam, eval=TRUE, results="hide"}
+```{bash sam-to-bam, eval=FALSE, results="hide"}
 samtools view -b --threads 3 output/aligned_files/3_S3_aligned.sam -b -o output/aligned_files/3_S3_aligned_unsorted.bam
 ```
 
 Sorting the bam file
 
-```{bash sorting-and-indexing-bam-outputs, eval=TRUE, results="hide"}
+```{bash sorting-and-indexing-bam-outputs, eval=FALSE, results="hide"}
 samtools sort output/aligned_files/3_S3_aligned_unsorted.bam -o output/aligned_files/3_S3_aligned_sorted.bam
 samtools index output/aligned_files/3_S3_aligned_sorted.bam
 ```
@@ -158,45 +125,41 @@ The various outputs of this part, located in `output/stats/` must be studied to 
 ### SAMtools flags
 SAMtools flag are a way SAMtools trackes several information about a read, such as wether it is paired. Here we check the repartition of those flags within our sample.
 
-```{bash counting-sam-flags, eval=TRUE, results="hide"}
+The [wikipedia page](https://en.wikipedia.org/wiki/SAM_(file_format)) about sam files does explicit the meaning of each Samtools flag, but know that the flag corresponding to a properly aligned pair of read is 2.
+
+```{bash counting-sam-flags, eval=FALSE, results="hide"}
 samtools view output/aligned_files/3_S3_aligned_sorted.bam |  awk '{print $2}' | sort -n | uniq -c | sed 's/^ *//g' > output/stats/3_S3_aligned_samflags.txt
 ```
 
 ### Samtools MAPQ score
-Let's create the MAPQ score distribution by using Samtools for reads that have the flags that correponds to 2 (TODO check which flags those are)
+The MAPQ score is related to the probability that a particular read is misaligned. with the higher the mapq, the lower that particular chances is. In our experiment we used a particular threshold of 22, corresponding to a probability of misalignment of 10<sup>-12</sup>
+Let's create the MAPQ score distribution by using Samtools for reads that have the flags that correponds to 2.
 
-```{bash MAPQ-score-computation, eval=TRUE, results="hide"}
-samtools view output/aligned_files/3_S3_aligned_nuclear_sorted.bam | awk '{print $5}' | sort -n | uniq -c | sed 's/^ *//g'  > output/stats/3_S3_aligned_mapq.txt
+```{bash MAPQ-score-computation, eval=FALSE, results="hide"}
+samtools view -f2 output/aligned_files/3_S3_aligned_sorted.bam | awk '{print $5}' | sort -n | uniq -c | sed 's/^ *//g'  > output/stats/3_S3_aligned_mapq.txt
 ```
 
 ### Template length
-Let's execute a filter on FLAGs and MAPQ quality with the used of -f and -q (TODO check what MAPQ 22 means) and observe the Template Length (space between pair of reads)
+Let's execute a filter on FLAGs and MAPQ quality with the used of -f and -q and observe the Template Length (space between pair of reads)
 
-```{bash template-length-computation, eval=TRUE, results="hide"}
+```{bash template-length-computation, eval=FALSE, results="hide"}
 samtools view -f2 -q22 output/aligned_files/3_S3_aligned_sorted.bam | cut -f 9| sed 's/^-//' | sort -n | uniq -c |sed  's/^ *//g' > output/stats/3_S3_aligned_is_summary.txt
 ```
 
-TODO ask why there is no filter on this
-
-### Filter on the previous things
-```{bash filtering, eval=TRUE, results="hide"}
+### Filter base on the quality scores threshold you choose
+```{bash filtering, eval=FALSE, results="hide"}
 samtools view -f2 -q22 -b output/aligned_files/3_S3_aligned_sorted.bam > output/aligned_filtered/3_S3_aligned_filtered.bam
 ```
 
 ### fastQC - general quality check
-```{bash fastQC, eval=TRUE, results="hide"}
+```{bash fastQC, eval=FALSE, results="hide"}
 fastqc -o output/stats/fastQC/ output/aligned_filtered/3_S3_aligned_filtered.bam
 ```
 
 Same as before, if you are treating several files at once, multiQC can be a good way to check wether the quality vary depending on each sample/condition, which might affect results down the line.
 
 ## Peaks calling
-Before calling the peaks of the ATAC-Seq, pooling the reads of similar samples together can make peak calling more efficient.
-If you have several different conditions that you want to compare, keep them seperated and create one file per condition.
-
-<!-- ```{bash merging-files, eval=FALSE, results="hide"}
-samtools merge -o output/aligned_filtered/merged_ctrl.bam output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam
-``` -->
+For calling the peaks of the ATAC-Seq, pooling the reads of similar samples together can make peak calling more efficient, you can do it in the command line of macs2. If you have several different conditions that you want to compare, keep them seperated and create one file per condition.
 
 We use macs2 for the calling of the ATAC-Seq peaks.
 
@@ -207,7 +170,7 @@ This part might need to be adapted to your particular case, so let's break down 
 * `-q 0.05` minimum q-value for report of the peaks
 * `-n output/ATAC_Seq_peaks/merged_ctrl` base name of the output, several type of files, containing a variety of informations will be generated
 
-```{bash peak-calling, eval=TRUE, results="hide"}
+```{bash peak-calling, eval=FALSE, results="hide"}
 macs2 callpeak -t output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl
 ```
 
@@ -216,13 +179,15 @@ Some peks might be in regions were informations is in fact, a bit lacking. we re
 
 The file we use can be found [here](http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz), you should adapt this file to your current project.
 
-```{bash mask-regions, eval=TRUE, results="hide"}
+```{bash mask-regions, eval=FALSE, results="hide"}
 bedtools subtract -A -a output/ATAC_Seq_peaks/merged_ctrl_summits.bed -b data/blacklist/mm10.blacklist.bed > output/ATAC_Seq_ctrl_summits_BL.bed
 ```
 
 ### Per sample informations
 If you want to determine exactly the number of reads from a perticular sample in each peak, you can use bedtools coverage
 
-```{bash bedtools-coverage, eval=TRUE, results="hide"}
+```{bash bedtools-coverage, eval=FALSE, results="hide"}
 bedtools coverage -a output/ATAC_Seq_ctrl_summits_BL.bed -b output/aligned_filtered/3_S3_aligned_filtered.bam > output/coverage_per_samples/coverage_S3.bed
 ```
+## Conclusion
+And here you are ! You now have both you called ATAC-Seq peaks and the number of read which contributed in each sample. You can now use this data to compute whatever strikes your fancy.
