@@ -1,2 +1,12 @@
-data/
+data/raw_reads/*
+data/genomes/*
 *DS_Store
+.ipynb_checkpoints/
+output/aligned_files/*
+output/aligned_filtered/*
+output/ATAC_Seq_peaks/*
+output/coverage_per_samples/*
+output/stats/*
+output/trimmed_files/*
+temp_files/*
+personnalNotes.rmd
