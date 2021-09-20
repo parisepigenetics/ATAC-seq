@@ -170,12 +170,10 @@ pre code {
 </div>
 
 
-<p>#TODO : add authors #TODO : add coders</p>
-<p>Please use the fournished Conda environments</p>
 <div id="personnal-todo" class="section level2">
 <h2>Personnal TODO</h2>
 <ul>
-<li>Maje sure to use the grcm38 mouse genome (mm10)</li>
+<li>Make sure to use the grcm38 mouse genome (mm10)</li>
 </ul>
 </div>
 <div id="questions-and-tools-to-ask-to-delara" class="section level2">
@@ -208,30 +206,24 @@ pre code {
 </div>
 <div id="load-conda-environment" class="section level2">
 <h2>Load Conda environment</h2>
-<p>TODO</p>
-<p>R ?? bowtie2.4.4 samtools 1.13</p>
+<p>In order to be sure to have the appropriate tools to run this analysis, we provide a conda environment summarising them. to use it, please download conda (TODO add link) and run the following line.</p>
+<pre class="bash"><code>conda env create -f conda_environment.yml</code></pre>
 </div>
 <div id="first-quality-control" class="section level2">
 <h2>First Quality control</h2>
 <p>In order to see how much the pre-processing improves the data, it is good practice to look at various statistics on the raw dataset. FastQC provides a good summary of those.</p>
-<pre class="bash"><code>fastqc -o output/stats/raw_fastQC/ data/raw_reads/2_S2_R1_001.fastq.gz
-fastqc -o output/stats/raw_fastQC/ data/raw_reads/2_S2_R2_001.fastq.gz</code></pre>
+<pre class="bash"><code>fastqc -o output/stats/raw_fastQC/ data/raw_reads/3_S3_R1_001.fastq.gz
+fastqc -o output/stats/raw_fastQC/ data/raw_reads/3_S3_R2_001.fastq.gz</code></pre>
+<p>If you have multiple samples, multiQC is a good way to look at the global quality over your samples.</p>
+<pre class="bash"><code>multiqc output/stats/raw_fastQC
+mv multiqc_data/ output/stats/raw_fastQC
+mv multiqc_report.html output/stats/raw_fastQC</code></pre>
 </div>
 <div id="trimming" class="section level2">
 <h2>Trimming</h2>
 <p>The fastq files are trimmed using Trimmomatic v0.39 to remove any adapter sequences in the reads caused by read through associated with DNA fragments shorter in size than the read length being sequenced.</p>
-<p>This particular step need to be adapted depending on your exact data and need. We encourage you to read the <a href="http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf">documentation</a> of the Trimmomatic tool in order to find the best possible use for your case.</p>
+<p>This particular step need to be adapted depending on your exact data and need. We found these options to be the most efficient in the case of ATAC-Seq.If you want to know more we encourage you to read the <a href="http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf">documentation</a> of the Trimmomatic tool in order to find the best possible use for your case.</p>
 <p>Let’s breakdown the particular actions asked here:</p>
-<ul>
-<li><code>ILLUMINACLIP:NexteraPE-PE.fa:2:30:10:1:true</code> corresponds more generally to <code>ILLUMINACLIP:&lt;fastaWithAdaptersEtc&gt;:&lt;seed mismatches&gt;:&lt;palindrome clip threshold&gt;:&lt;simple clip threshold&gt;</code>
-<ul>
-<li><code>ILLUMINACLIP</code> we ask to cut adapters and other illumina sequence from the reads</li>
-<li><code>NexteraPE-PE.fa</code> We give infomations on the type of adaptors that have been used in the librairy preparation (here, Nextera Pair ended), the correspondant .fasta must be included</li>
-<li><code>2:30:10:1:true</code></li>
-</ul></li>
-<li><code>TRAILING:3</code></li>
-<li><code>SLIDINGWINDOW:4:15</code></li>
-</ul>
 <pre class="bash"><code>trimmomatic PE -threads 2 data/raw_reads/3_S3_R1_001.fastq.gz data/raw_reads/3_S3_R2_001.fastq.gz output/trimmed_files/3_S3_R1_trimmed.fastq output/trimmed_files/3_S3_R1_trimmed_unpaired.fastq output/trimmed_files/3_S3_R2_trimmed.fastq output/trimmed_files/3_S3_R2_trimmed_unpaired.fastq ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15</code></pre>
 </div>
 <div id="alignement" class="section level2">
@@ -243,6 +235,7 @@ fastqc -o output/stats/raw_fastQC/ data/raw_reads/2_S2_R2_001.fastq.gz</code></p
 <p>In order to align reads to genomes and particular cellular compartments (i.e. mithochodria), it is necessary to build a bowtie index for each of them and potential cofounders. In the end, only the reads mapping solely to the target of interests will be saved, which in our case means that the mithochondrial hits will be removed.</p>
 <p>Bowtie2 necessitate and index to be build before alignment can be done. By default, the exact method used is choosen depending on the specificities of the machine doing the computation, please read the <a href="http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#the-bowtie2-build-indexer">documentation of bowtie2-build</a> for further informations, and be carefull when repeating a study on different machines.</p>
 <p>If you already have a bowtie index built for this type of alignment, this step can be skipped.</p>
+<p>In our particular case, the raw fasta files used are from the GRCm38/mm10 genome<a href="http://hgdownload.cse.ucsc.edu/goldenPath/mm10/chromosomes/">here</a>. The exact build we used is Genome Reference Consortium Mouse Build 38 (GCA_000001635.2)</p>
 <pre class="bash"><code>bowtie2-build chr1.fa,chr2.fa,chr3.fa,chr4.fa,chr5.fa,chr6.fa,chr7.fa,chr8.fa,chr9.fa,chr10.fa,chr11.fa,chr12.fa,chr13.fa,chr14.fa,chr15.fa,chr16.fa,chr17.fa,chr18.fa,chr19.fa mouse_vn_chrN
 
 bowtie2-build chrM.fa mouse_vn_chrM
@@ -264,7 +257,7 @@ bowtie2-build chrM.fa mouse_vn_chrM
 </ul>
 <p>for more informations and option, you can run <code>bowtie2 --help</code></p>
 <pre class="bash"><code>bowtie2 -p 4 -X 2000 --very-sensitive -x data/genomes/mm10/mouse_vn_chrM -1 output/trimmed_files/3_S3_R1_trimmed.fastq -2 output/trimmed_files/3_S3_R2_trimmed.fastq -S temp_files/3_S3_tempM.sam --un-conc temp_files/3_S3_fastq</code></pre>
-<p>This command also generate some files that must be deleted, namely <code>temp_files/3_S3_tempM.sam</code>, we still keep it as an output because removing it make the alignment much more memory heavy.</p>
+<p>This command also generate some files that must be deleted, namely <code>temp_files/3_S3_tempM.sam</code>, we still keep it as an output because removing it makes the alignment much more memory heavy.</p>
 </div>
 <div id="alignment-on-chromosomal-genome" class="section level4">
 <h4>Alignment on chromosomal genome</h4>
@@ -308,15 +301,29 @@ samtools index output/aligned_files/3_S3_aligned_sorted.bam</code></pre>
 <div id="fastqc---general-quality-check" class="section level3">
 <h3>fastQC - general quality check</h3>
 <pre class="bash"><code>fastqc -o output/stats/fastQC/ output/aligned_filtered/3_S3_aligned_filtered.bam</code></pre>
-<p>If you are treating several files at once, multiQC can be a good way to check wether the quality vary depending on each sample/condition, which might affect results down the line</p>
+<p>Same as before, if you are treating several files at once, multiQC can be a good way to check wether the quality vary depending on each sample/condition, which might affect results down the line.</p>
 </div>
 </div>
 <div id="peaks-calling" class="section level2">
 <h2>Peaks calling</h2>
 <p>Before calling the peaks of the ATAC-Seq, pooling the reads of similar samples together can make peak calling more efficient. If you have several different conditions that you want to compare, keep them seperated and create one file per condition.</p>
-<pre class="bash"><code>samtools merge -o output/aligned_filtered/merged_ctrl.bam output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam</code></pre>
+<!-- ```{bash merging-files, eval=FALSE, results="hide"}
+samtools merge -o output/aligned_filtered/merged_ctrl.bam output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam
+``` -->
 <p>We use macs2 for the calling of the ATAC-Seq peaks.</p>
-<pre class="bash"><code>macs2 callpeak -t output/aligned_filtered/merged_ctrl.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl</code></pre>
+<p>This part might need to be adapted to your particular case, so let’s break down the various arguments * <code>-t output/aligned_filtered/merged_ctrl.bam</code> name of the file (or files) on wich to do the peak calling. If you input seveal files, they will be pulled together into a single callpeak file. * <code>-f BAM</code> Type of the output file desired * <code>g 1.87e9</code> Effective length of the genome. This will need to be adapted if you are working on non-mouse DNA or you includes more chromosomes than we did (X &amp; Y) * <code>-q 0.05</code> minimum q-value for report of the peaks * <code>-n output/ATAC_Seq_peaks/merged_ctrl</code> base name of the output, several type of files, containing a variety of informations will be generated</p>
+<pre class="bash"><code>macs2 callpeak -t output/aligned_filtered/2_S2_aligned_filtered.bam output/aligned_filtered/3_S3_aligned_filtered.bam -f BAM -g 1.87e9 -q 0.05 -n output/ATAC_Seq_peaks/merged_ctrl</code></pre>
+<div id="mask-regions" class="section level3">
+<h3>Mask regions</h3>
+<p>Some peks might be in regions were informations is in fact, a bit lacking. we remove the corresponding peaks.</p>
+<p>The file we use can be found <a href="http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz">here</a>, you should adapt this file to your current project.</p>
+<pre class="bash"><code>bedtools subtract -A -a output/ATAC_Seq_peaks/merged_ctrl_summits.bed -b data/blacklist/mm10.blacklist.bed &gt; output/ATAC_Seq_ctrl_summits_BL.bed</code></pre>
+</div>
+<div id="per-sample-informations" class="section level3">
+<h3>Per sample informations</h3>
+<p>If you want to determine exactly the number of reads from a perticular sample in each peak, you can use bedtools coverage</p>
+<pre class="bash"><code>bedtools coverage -a output/ATAC_Seq_ctrl_summits_BL.bed -b output/aligned_filtered/3_S3_aligned_filtered.bam &gt; output/coverage_per_samples/coverage_S3.bed</code></pre>
+</div>
 </div>
 
 

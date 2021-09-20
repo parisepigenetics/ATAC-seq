@@ -1,4 +1,4 @@
-name: ATAC-Sec-Delara
+name: ATAC-Seq
 channels:
   - conda-forge
   - bioconda
@@ -195,4 +195,4 @@ dependencies:
   - zipp=3.5.0=pyhd8ed1ab_0
   - zlib=1.2.11=h7795811_1010
   - zstd=1.4.9=h582d3a0_0
-prefix: /Users/asilvert/opt/anaconda3/envs/ATAC-Sec-Delara
+prefix: /Users/asilvert/opt/anaconda3/envs/ATAC-Seq
