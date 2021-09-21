@@ -17,6 +17,7 @@ conda env create -f conda_environment.yml
 ```
 
 ## First Quality control
+
 In order to see how much the pre-processing improves the data, it is good practice to look at various statistics on the raw dataset. FastQC provides a good summary of those.
 
 ```{bash fastQC-raw, eval=FALSE, results="hide"}
@@ -55,7 +56,7 @@ Bowtie2 necessitate and index to be build before alignment can be done. By defau
 
 If you already have a bowtie index built for this type of alignment, this step can be skipped.
 
-In our particular case, the raw fasta files used are from the GRCm38/mm10 genome[here](http://hgdownload.cse.ucsc.edu/goldenPath/mm10/chromosomes/). The exact build we used is Genome Reference Consortium Mouse Build 38 (GCA_000001635.2)
+In our particular case, the raw fasta files used are from the GRCm38/mm10 genome [here](http://hgdownload.cse.ucsc.edu/goldenPath/mm10/chromosomes/). The exact build we used is Genome Reference Consortium Mouse Build 38 (GCA_000001635.2)
 
 ```{bash bowtie2-index,  eval=FALSE, results="hide"}
 bowtie2-build chr1.fa,chr2.fa,chr3.fa,chr4.fa,chr5.fa,chr6.fa,chr7.fa,chr8.fa,chr9.fa,chr10.fa,chr11.fa,chr12.fa,chr13.fa,chr14.fa,chr15.fa,chr16.fa,chr17.fa,chr18.fa,chr19.fa mouse_vn_chrN
@@ -123,6 +124,7 @@ samtools index output/aligned_files/3_S3_aligned_sorted.bam
 The various outputs of this part, located in `output/stats/` must be studied to see wether something has gone wrong up with the alignment, even though trouble at the alignment step can be caused by an uncatched problem in the earlier steps. What to do when you have an unexpected behaviour will very much depend on your experiment.
 
 ### SAMtools flags
+
 SAMtools flag are a way SAMtools trackes several information about a read, such as wether it is paired. Here we check the repartition of those flags within our sample.
 
 The [wikipedia page](https://en.wikipedia.org/wiki/SAM_(file_format)) about sam files does explicit the meaning of each Samtools flag, but know that the flag corresponding to a properly aligned pair of read is 2.
@@ -132,6 +134,7 @@ samtools view output/aligned_files/3_S3_aligned_sorted.bam |  awk '{print $2}' |
 ```
 
 ### Samtools MAPQ score
+
 The MAPQ score is related to the probability that a particular read is misaligned. with the higher the mapq, the lower that particular chances is. In our experiment we used a particular threshold of 22, corresponding to a probability of misalignment of 10<sup>-12</sup>
 Let's create the MAPQ score distribution by using Samtools for reads that have the flags that correponds to 2.
 
@@ -140,6 +143,7 @@ samtools view -f2 output/aligned_files/3_S3_aligned_sorted.bam | awk '{print $5}
 ```
 
 ### Template length
+
 Let's execute a filter on FLAGs and MAPQ quality with the used of -f and -q and observe the Template Length (space between pair of reads)
 
 ```{bash template-length-computation, eval=FALSE, results="hide"}
@@ -147,11 +151,13 @@ samtools view -f2 -q22 output/aligned_files/3_S3_aligned_sorted.bam | cut -f 9| 
 ```
 
 ### Filter base on the quality scores threshold you choose
+
 ```{bash filtering, eval=FALSE, results="hide"}
 samtools view -f2 -q22 -b output/aligned_files/3_S3_aligned_sorted.bam > output/aligned_filtered/3_S3_aligned_filtered.bam
 ```
 
 ### fastQC - general quality check
+
 ```{bash fastQC, eval=FALSE, results="hide"}
 fastqc -o output/stats/fastQC/ output/aligned_filtered/3_S3_aligned_filtered.bam
 ```
@@ -159,6 +165,7 @@ fastqc -o output/stats/fastQC/ output/aligned_filtered/3_S3_aligned_filtered.bam
 Same as before, if you are treating several files at once, multiQC can be a good way to check wether the quality vary depending on each sample/condition, which might affect results down the line.
 
 ## Peaks calling
+
 For calling the peaks of the ATAC-Seq, pooling the reads of similar samples together can make peak calling more efficient, you can do it in the command line of macs2. If you have several different conditions that you want to compare, keep them seperated and create one file per condition.
 
 We use macs2 for the calling of the ATAC-Seq peaks.
@@ -175,6 +182,7 @@ macs2 callpeak -t output/aligned_filtered/2_S2_aligned_filtered.bam output/align
 ```
 
 ### Mask regions
+
 Some peks might be in regions were informations is in fact, a bit lacking. we remove the corresponding peaks.
 
 The file we use can be found [here](http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz), you should adapt this file to your current project.
@@ -184,10 +192,12 @@ bedtools subtract -A -a output/ATAC_Seq_peaks/merged_ctrl_summits.bed -b data/bl
 ```
 
 ### Per sample informations
+
 If you want to determine exactly the number of reads from a perticular sample in each peak, you can use bedtools coverage
 
 ```{bash bedtools-coverage, eval=FALSE, results="hide"}
 bedtools coverage -a output/ATAC_Seq_ctrl_summits_BL.bed -b output/aligned_filtered/3_S3_aligned_filtered.bam > output/coverage_per_samples/coverage_S3.bed
 ```
 ## Conclusion
+
 And here you are ! You now have both you called ATAC-Seq peaks and the number of read which contributed in each sample. You can now use this data to compute whatever strikes your fancy.

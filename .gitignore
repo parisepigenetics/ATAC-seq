@@ -9,4 +9,4 @@ output/coverage_per_samples/*
 output/stats/*
 output/trimmed_files/*
 temp_files/*
-personnalNotes.rmd
+personnalNotes.md
