@@ -1,0 +1,13 @@
+name: ATAC-Seq
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bedtools=2.30.0
+  - bowtie2=2.4.4
+  - macs2=2.2.7.1
+  - samtools=1.13
+  - fastqc=0.11.9
+  - multiqc=1.11
+  - trimmomatic=0.39
