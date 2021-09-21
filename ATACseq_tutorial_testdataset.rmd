@@ -14,7 +14,7 @@ This document aims to be a detailed example of an ATAC-Seq analysis used in a re
 In order to be sure to have the appropriate tools to run this analysis, we provide a Conda environment summarizing them. In order to use it, please download [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/download.html) and run the following line.
 ```{bash startup-conda-environment, eval=FALSE, results="hide"}
 conda env create -f conda_environment.yml
-conda activate ATAC-seq 
+conda activate ATAC-Seq 
 ```
 
 ## Download test dataset
