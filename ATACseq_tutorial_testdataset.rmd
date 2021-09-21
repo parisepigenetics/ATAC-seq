@@ -1,0 +1,218 @@
+---
+title : "ATAC-Seq Example"
+author : "Délara Sabéran-Djoneidi, Anne-Laure Schang, Kate Wooley-Allen, Sascha Ott"
+output : html_document
+---
+
+## Intro and general description
+
+This document aims to be a detailed example of an ATAC-Seq analysis used in a research context. The goal here is to help you draft your own experiments from this particular base, by walking you through the steps we took and by pointing out the parts where the specificity of your experimental set will require some tinkering.
+
+
+## Load Conda environment
+
+In order to be sure to have the appropriate tools to run this analysis, we provide a Conda environment summarizing them. In order to use it, please download [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/download.html) and run the following line.
+```{bash startup-conda-environment, eval=FALSE, results="hide"}
+conda env create -f conda_environment.yml
+conda activate ATAC-seq 
+```
+
+## Download test dataset
+
+To test this tutorial, you can download a small test dataset. 
+
+``` 
+wget https://raw.githubusercontent.com/nf-core/test-datasets/atacseq/testdata/SRR1822153_1.fastq.gz https://raw.githubusercontent.com/nf-core/test-datasets/atacseq/testdata/SRR1822153_2.fastq.gz -P data/raw_reads/
+```
+And the corresponding reference files. 
+```
+wget https://github.com/nf-core/test-datasets/raw/atacseq/reference/genome.fa -P reference
+```
+
+## Initial quality control
+
+In order to see how much the pre-processing improves the data, it is a good practice to look at various statistics on the raw dataset. FastQC provides a good summary of those.
+
+```{bash fastQC-raw, eval=FALSE, results="hide"}
+mkdir -p output/stats/raw_fastQC/
+fastqc -o output/stats/raw_fastQC/ data/raw_reads/SRR1822153_1.fastq.gz data/raw_reads/SRR1822153_2.fastq.gz 
+```
+
+If you have multiple samples, multiQC is a good way to look at the global quality over your samples.
+
+```{bash multiQC-raw, eval=FALSE, results="hide"}
+multiqc output/stats/raw_fastQC -o output/stats/raw_fastQC
+```
+
+## Trimming
+
+The fastq files are trimmed using Trimmomatic v0.39 to remove any adapter sequences in the reads caused by read through associated with DNA fragments shorter in size than the read length being sequenced.
+
+This particular step need to be adapted depending on your exact data and need. We found these options to be the most efficient in the case of ATAC-Seq. If you want to know more we encourage you to read the [documentation](http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf) of the Trimmomatic tool in order to find the best possible use for your case.
+
+```{bash trimmomatic, eval=FALSE, results="hide"}
+mkdir output/trimmed_files
+trimmomatic PE -threads 2 data/raw_reads/SRR1822153_1.fastq.gz data/raw_reads/SRR1822153_2.fastq.gz output/trimmed_files/SRR1822153_1_trimmed.fastq output/trimmed_files/SRR1822153_1_trimmed_unpaired.fa output/trimmed_files/SRR1822153_2_trimmed.fastq output/trimmed_files/SRR1822153_2_trimmed_unpaired.fa ILLUMINACLIP:data/adapters/NexteraPE-PE.fa:2:30:10:1:true TRAILING:3 SLIDINGWINDOW:4:15
+```
+
+## Alignement
+
+This step must also be adapted to your particular experiment, namely the genomes used may vary and the aligner used as well as the alignment options can be optimized.
+
+In our case, alignment is performed by bowtie2.4.4. 
+
+### Bowtie2 Index
+
+In order to align reads to genome(s) and particular cellular compartments (i.e. mitochondria), it is necessary to build a bowtie index for each of them and potential confounders. In the end, only the reads mapping solely to the target of interest will be saved. In our case, the mitochondrial hits will be removed.
+
+Bowtie2 necessitate and index to be built before the alignment can be done. By default, the exact method used is chosen depending on the machine doing the computation, please read the [documentation of bowtie2-build](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#the-bowtie2-build-indexer) for further information, and be careful when repeating a study on different machines.
+
+If you already have a bowtie index built for this type of alignment, this step can be skipped.
+
+In this example, we start from the fasta of a complete genome that we split into chromosomes using a small bash script.
+
+```
+bash scripts/split_reference.sh reference/genome.fa`
+```
+Then we build one index for the mitochondrie, and one index for the other chromosomes. 
+
+```{bash bowtie2-index,  eval=FALSE, results="hide"}
+cd reference
+bowtie2-build genome.fa_MT yeast_MT > MT_index.log
+bowtie2-build genome.fa_I,genome.fa_II,genome.fa_III,genome.fa_IV,genome.fa_V,genome.fa_VI,genome.fa_VII,genome.fa_VIII,genome.fa_IX,genome.fa_X,genome.fa_XI,genome.fa_XII,genome.fa_XIII,genome.fa_XIV,genome.fa_XV,genome.fa_XVI yeast_NC > NC_index.log
+cd .. # to go back to ATAC-seq folder. 
+```
+
+### Alignment
+
+#### Removal of Mitochondrial DNA
+
+Let's breakdown the various options used
+
+* `-p 4` We are using 4 threads for alignment. This option can also be accessed via `--threads`
+* `-X 2000` The maximum fragment length accepted between paired end. This number should be adapted depending on your sequencing protocol.
+* `--very-sensitive` Preset option corresponding to `-D 20 -R 3 -N 0 -L 20 -i S,1,0.50`
+* `-x` Selected bowtie index
+*  `-1 and -2` The input fastq files in the case of paired-end alignment
+*  `-S` File in which to write the output SAM file of the aligned reads. This file is not useful but printing it allows us to use less memory.
+*  `--un-conc` We only keep pairs that DIDN'T align on mitochondrial genome
+
+for more informations and option, you can run `bowtie2 --help`
+
+```{bash mitochondria-removind, eval=FALSE, results="hide"}
+mkdir tmp
+bowtie2 -p 4 -X 2000 --very-sensitive -x reference/yeast_MT -1 output/trimmed_files/SRR1822153_1_trimmed.fastq -2 output/trimmed_files/SRR1822153_2_trimmed.fastq -S tmp/SRR1822153_MT.sam --un-conc-gz tmp/SRR1822153_notMT_%.fastq.gz
+```
+
+This file containing the alignment on the mitochondria won't be used, so we remove it. 
+
+```{bash zipping-files, eval=FALSE, results="hide"}
+rm tmp/SRR1822153_MT.sam
+```
+
+#### Alignment on chromosomal genome
+
+We now align the remaining reads on the nuclear genome, in a very similar manner. 
+
+```{bash aligning-non-mitochodrial, eval=FALSE, results="hide" }
+mkdir output/aligned_files
+bowtie2 -p 4 -X 2000 --very-sensitive -x reference/yeast_NC -1 tmp/SRR1822153_notMT_1.fastq.gz -2 tmp/SRR1822153_notMT_2.fastq.gz -S output/aligned_files/SRR1822153_notMT_aligned.sam
+```
+
+```{bash removing-temp-files, eval=FALSE, results="hide"}
+rm tmp/SRR1822153_notMT_*
+```
+
+We now sort the sam file, convert it to bam, and then index it.
+
+```{bash sam-to-bam, eval=FALSE, results="hide"}
+samtools sort output/aligned_files/SRR1822153_notMT_aligned.sam -o output/aligned_files/SRR1822153_notMT_aligned_sorted.bam
+samtools index output/aligned_files/SRR1822153_notMT_aligned_sorted.bam
+```
+
+## Quality Controls and Filters
+
+The various outputs of this part, located in `output/stats/` must be studied to see whether something has gone wrong with the alignment or previous steps. What to do when you have an unexpected behavior will very much depend on your experiment.
+
+### SAMtools flags
+SAMtools flags give several information about a read, such as whether it is paired or not. Here we check the distribution of those flags within our sample.
+
+The [wikipedia page](https://en.wikipedia.org/wiki/SAM_(file_format)) about SAM files does explicit the meaning of each SAMtools flag.
+
+```{bash counting-sam-flags, eval=FALSE, results="hide"}
+samtools flagstat output/aligned_files/SRR1822153_notMT_aligned_sorted.bam > output/stats/SRR1822153_aligned_samflags.txt
+```
+
+### Samtools MAPQ score
+The MAPQ score is related to the probability that a particular read is misaligned. The higher the MAPQ score is, the lower the risk that the read is misaligned is. In our experiment we used a particular threshold of 22, corresponding to a probability of misalignment of 10<sup>-12</sup>. 
+Let's create the MAPQ score distribution using SAMtools for reads that have the flag that corresponds to 2 (each segment properly aligned according to aligner).
+
+```{bash MAPQ-score-computation, eval=FALSE, results="hide"}
+samtools view -f2 output/aligned_files/SRR1822153_notMT_aligned_sorted.bam | awk '{print $5}' | sort -n | uniq -c | sed 's/^ *//g'  > output/stats/SRR1822153_aligned_aligned_mapq.txt
+```
+Using Bowtie2, the reads that mapped several times have a MAPQ score of 1. The reads with MAPQ > 22 are uniquely mapped with good quality. We will now filter the reads to keep only these ones.   
+
+### Filter base on the quality scores threshold you choose
+
+```{bash filtering, eval=FALSE, results="hide"}
+samtools view -f2 -q22 -b output/aligned_files/SRR1822153_notMT_aligned_sorted.bam > output/aligned_files/SRR1822153_notMT_aligned_filtered.bam
+```
+
+### Template length
+
+Let's observe the Template Length. This is the distance between the mapped end of the DNA fragment and the mapped start of the DNA fragment, inclusively. If the mapping is correct, it corresponds to the size of the original DNA fragment. 
+
+```{bash template-length-computation, eval=FALSE, results="hide"}
+samtools view output/aligned_files/SRR1822153_notMT_aligned_filtered.bam | cut -f 9| sed 's/^-//' | sort -n | uniq -c |sed  's/^ *//g' > output/stats/SRR1822153_aligned_length.txt
+```
+
+
+### fastQC - general quality check
+```{bash fastQC, eval=FALSE, results="hide"}
+mkdir output/stats/fastQC/
+fastqc -o output/stats/fastQC/ output/aligned_files/SRR1822153_notMT_aligned_filtered.bam
+```
+
+Same as before, if you are treating several files at once, multiQC can be a good way to check whether the quality vary depending on each sample/condition, which might affect the results later on.
+
+```
+multiqc output/stats/fastQC/ -o output/stats/fastQC/
+```
+
+## Peak calling
+
+To call the ATAC-Seq peaks, we use MACS2. It might be more efficient to pool the reads from similar samples. You can do it by giving several bam files when calling MACS2. If you have several conditions that you want to compare, keep them separated and create one peak file per condition.
+
+This part might need to be adapted to your particular case, so let's break down the various arguments : 
+* `-t output/aligned_filtered/SRR1822153_notMT_aligned_filtered.bam` name of the file (or files) on which to do the peak calling. If you input several files, they will be pooled to give a single callpeak file.
+* `-f BAM` Type of the output file desired
+* `-g 1.2e7` Effective length of the genome (S.cerevisiae here). This has to be adapted to your genome (some are precompiled : hs: 2.7e9; mm: 1.87e9; ce: 9e7; dm: 1.2e8)
+* `-q 0.05` minimum q-value for report of the peaks
+* `-n output/ATAC_Seq_peaks/SRR1822153` base name of the output, several files containing a variety results will be generated
+
+```{bash peak-calling, eval=FALSE, results="hide"}
+mkdir output/ATAC_Seq_peaks
+macs2 callpeak -t output/aligned_files/SRR1822153_notMT_aligned_filtered.bam -f BAM -g 1.2e7 -q 0.05 -n output/ATAC_Seq_peaks/SRR1822153
+```
+
+### Mask regions
+
+Some peaks might be in regions known to create artefactual peaks. It is important to remove the corresponding peaks from the results. 
+
+The blacklists can be found [here](http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/) or from [ENCODE](https://github.com/Boyle-Lab/Blacklist/tree/master/lists) and should be adapted to your project. In yeast, there is no such region and we only remove rDNA peaks.  
+
+```{bash mask-regions, eval=FALSE, results="hide"}
+bedtools subtract -A -a output/ATAC_Seq_peaks/SRR1822153_summits.bed -b data/blacklist/sacCer3_rDNA.bed > output/ATAC_Seq_peaks/SRR1822153_summits_BL.bed
+```
+
+### Peak coverage per sample
+
+We use bedtools coverage to get the peak coverage of every sample. 
+
+```{bash bedtools-coverage, eval=FALSE, results="hide"}
+mkdir output/peak_coverage/
+bedtools coverage -a output/ATAC_Seq_peaks/SRR1822153_summits_BL.bed -b output/aligned_files/SRR1822153_notMT_aligned_filtered.bam > output/peak_coverage/SRR1822153_peaks.bed
+```
+
+Those outputs can be used to run differential analysis between 2 conditions with DEseq2 or edgeR. 
+
