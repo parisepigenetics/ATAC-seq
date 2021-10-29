@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 ###### Slurm options ####
 
@@ -30,6 +30,14 @@ echo 'Job Name:' $SLURM_JOB_NAME
 echo 'Job Id:' $SLURM_JOB_ID
 echo 'Directory:' $(pwd)
 echo '########################################'
-echo 'RASflow_IFB version: v0.5.3'
+echo 'ATAC-Seq version: v0.0.1'
 echo '-------------------------'
 echo 'Main module versions:'
+
+start0=`date +%s`
+
+# Load modules
+module purge
+module load conda snakemake/6.5.0 slurm-drmaa
+conda --version
+python --version
