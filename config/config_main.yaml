@@ -1,0 +1,5 @@
+PROJECT: project_name
+METAFILE: data/metadata.tsv #this is the example metadatafile
+RESULTPATH: output/
+NJOBS: 1
+HARDWARE: Local #can be "IFB", "iPOP-UP" or "Local"

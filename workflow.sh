@@ -41,3 +41,27 @@ module purge
 module load conda snakemake/6.5.0 slurm-drmaa
 conda --version
 python --version
+echo 'snakemake' && snakemake --version
+
+echo '-------------------------'
+echo 'PATH:'
+echo $PATH
+echo '-------------------------'
+
+# remove display to make qualimap run:
+#unset DISPLAY
+#I don't think it's usefull for us
+
+#Actual launching of the pipeline
+python main_cluster.py
+
+#Move logs
+mkdir -p slurm_output
+mv *.out slurm_output
+
+echo '########################################'
+echo 'Job Finished' $(date --iso-8601=seconds)
+end=`date +%s`
+runtime=$((end-start0))
+minute=60
+echo "---- Total runtime $runtime s ; $((runtime/minute)) min ----"
