@@ -1,5 +1,15 @@
+####General Information####
 PROJECT: project_name
 METAFILE: data/metadata.tsv #this is the example metadatafile
 RESULTPATH: output/
 NJOBS: 1
 HARDWARE: Local #can be "IFB", "iPOP-UP" or "Local"
+
+
+#####What needs to be done####
+INITIAL_QUALITY_CONTROL: YES #Either of these option can be "YES" or "NO"
+TRIMING: YES
+ALIGNMENT: YES #Puting this entry to YES demands that you fill the "GENOME" part of this file
+
+#####Files input#####
+GENOME_PATH: 
