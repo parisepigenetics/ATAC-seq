@@ -2,7 +2,6 @@ import yaml
 import os
 
 
-
 with open('config/config_main.yaml') as yamlfile :
     config = yaml.load(yamlfile, Loader = yaml.BaseLoader)
 
@@ -23,3 +22,12 @@ try :
     assert(hardware in ["local", "iPOP-UP", "IFB"])
 except :
     print("It seems the HARDWARE part of configuration does not match expectation")
+
+if config["INITIAL_QUALITY_CONTROL"] == "YES" :
+    print("Initial quality control will be performed")
+if config["TRIMMING"] == "YES" :
+    print("Trimming will be performed")
+if config["ALIGNMENT"] == "YES" :
+    print("Alignement will be performed")
+if config["PEAK_CALLING"] == "YES" :
+    print("Peak Calling will be performed")
