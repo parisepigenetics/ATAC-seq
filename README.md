@@ -1,4 +1,4 @@
-Ó# ATAC-seq tutorial
+# ATAC-seq tutorial
 
 ## Authors
 ##### Original Authors
